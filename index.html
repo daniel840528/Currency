@@ -6,7 +6,6 @@
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
     <title>Mono Currency</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,13 +49,13 @@
             touch-action: manipulation; 
         }
 
-        /* --- 佈局核心修改 Start --- */
         html {
-            /* 使用 dvh (Dynamic Viewport Height) 解決 iOS 網址列/HomeBar 收合問題 */
-            height: 100dvh; 
+            height: 100%;
             width: 100%;
-            overflow: hidden; /* 禁止 html 捲動 */
-            background-color: var(--bg-base); /* 確保底部縫隙顏色一致 */
+            overflow: hidden;
+            position: fixed; 
+            top: 0; left: 0;
+            -webkit-text-size-adjust: 100%;
         }
 
         body {
@@ -66,21 +65,20 @@
             margin: 0;
             padding: 0;
             
-            /* 強制 Body 佔滿螢幕 */
-            height: 100dvh; 
+            height: 100%; 
             width: 100%;
-            overflow: hidden; /* 禁止 Body 整體捲動 */
+            position: fixed; 
+            top: 0; left: 0;
+            overflow: hidden; 
             
-            /* 改用 Flexbox 佈局 */
             display: flex;
             flex-direction: column;
             
             transition: background 0.3s, color 0.3s;
         }
 
+        /* --- Header --- */
         .header {
-            /* Header 高度固定，不被壓縮 */
-            flex-shrink: 0; 
             padding-top: max(20px, env(safe-area-inset-top)); 
             padding-bottom: 16px;
             padding-left: 24px;
@@ -91,40 +89,8 @@
             background: var(--bg-base);
             border-bottom: 2px solid var(--text-primary);
             z-index: 10;
+            flex-shrink: 0; 
         }
-
-        .currency-list {
-            /* List 佔據所有剩餘空間 */
-            flex: 1; 
-            overflow-y: auto; /* 只有 List 區域可以捲動 */
-            
-            /* 移除底部的 padding，因為鍵盤不再是懸浮的 */
-            padding: 0; 
-            
-            scrollbar-width: none;
-            position: relative;
-            -webkit-overflow-scrolling: touch; 
-            width: 100%;
-        }
-        
-        .keypad-container {
-            /* 移除 position: fixed */
-            position: relative; 
-            flex-shrink: 0; /* 禁止鍵盤被壓縮 */
-            z-index: 40;
-            
-            height: 34vh; 
-            background: var(--bg-base); 
-            
-            /* 這裡最關鍵：利用 padding 撐開底部安全區，背景色會自動延伸 */
-            padding-bottom: env(safe-area-inset-bottom);
-            
-            display: grid; 
-            grid-template-columns: repeat(4, 1fr); 
-            grid-template-rows: repeat(4, 1fr);
-            border-top: 1px solid var(--line-color); 
-        }
-        /* --- 佈局核心修改 End --- */
 
         .app-title { font-size: 24px; font-weight: 700; letter-spacing: -1px; text-transform: uppercase; }
 
@@ -142,6 +108,19 @@
         }
         [data-theme="dark"] .switch::after { transform: translateX(20px); background: #fff; }
 
+        /* --- List Area --- */
+        .currency-list {
+            flex: 1; 
+            height: 100%; 
+            overflow-y: auto;
+            /* 關鍵修改 2: 這裡的 padding-bottom 必須大於鍵盤高度 + 安全區 */
+            /* 34vh 是按鈕區，env(safe-area) 是底部橫條，再加 20px 緩衝 */
+            padding: 0 0 calc(34vh + env(safe-area-inset-bottom) + 20px) 0; 
+            scrollbar-width: none;
+            position: relative;
+            -webkit-overflow-scrolling: touch; 
+            width: 100%;
+        }
         .currency-list::-webkit-scrollbar { display: none; }
 
         .currency-row-wrapper {
@@ -250,11 +229,10 @@
         .detail-view {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-base);
-            z-index: 50; 
+            z-index: 50;
             transform: translateX(100%);
             transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
             display: flex; flex-direction: column;
-            /* 詳細頁面也需要確保安全區 */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
         }
@@ -306,6 +284,32 @@
         .stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
         .stat-value { font-size: 18px; color: var(--text-primary); font-weight: 600; }
 
+        /* --- Keypad (關鍵修正部分) --- */
+        .keypad-container {
+            /* 1. 回歸 Fixed 定位，這是你提供的 AI 解決方案的要求 */
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100; /* 確保在最上層 */
+            
+            /* 2. 背景色必須設定，因為 padding 延伸到了安全區 */
+            background: var(--bg-base); 
+            
+            /* 3. 使用 env(safe-area-inset-bottom) 增加內距 */
+            padding-bottom: env(safe-area-inset-bottom);
+            
+            /* 4. 關鍵：高度計算 */
+            /* 這裡不能只寫 34vh，否則內距會擠壓按鈕空間 */
+            /* 我們使用 calc(34vh + 安全區高度) 讓按鈕保持 34vh，安全區則是額外加上的 */
+            height: calc(34vh + env(safe-area-inset-bottom));
+            
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            grid-template-rows: repeat(4, 1fr);
+            border-top: 1px solid var(--line-color); 
+        }
+        
         .key {
             background: transparent; border: none; font-family: 'Space Mono', monospace;
             font-size: 24px; color: var(--key-text); display: flex; align-items: center; justify-content: center;
@@ -331,7 +335,7 @@
             width: calc(100% - 32px); 
             max-width: 600px;
             height: 80vh; 
-            /* Modal 在 PWA 模式下也需要注意底部安全區 */
+            /* Modal 也要注意安全區 */
             margin-bottom: max(16px, env(safe-area-inset-bottom)); 
             background: var(--bg-base); 
             padding: 24px; 
