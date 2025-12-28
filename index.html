@@ -40,6 +40,7 @@
             --cursor-color: #ff6b00;
         }
 
+        /* 1. 優化：全域配置 */
         * { 
             box-sizing: border-box; 
             -webkit-tap-highlight-color: transparent; 
@@ -48,18 +49,30 @@
             touch-action: manipulation; 
         }
 
+        /* 2. 關鍵修正：鎖定 HTML 與 BODY */
+        html {
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* 禁止 html 滾動 */
+            -webkit-overflow-scrolling: touch;
+        }
+
         body {
             font-family: 'Space Mono', monospace;
             background-color: var(--bg-base);
             color: var(--text-primary);
             margin: 0;
-            height: 100vh;
-            height: 100dvh; 
+            
+            /* 修正：使用 fixed + inset:0 強制貼合螢幕，解決 PWA 底部懸空問題 */
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            
             display: flex;
             flex-direction: column;
             overflow: hidden;
             transition: background 0.3s, color 0.3s;
-            position: relative; 
         }
 
         /* --- Header --- */
@@ -266,10 +279,12 @@
         .stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
         .stat-value { font-size: 18px; color: var(--text-primary); font-weight: 600; }
 
-        /* --- Keypad --- */
+        /* --- Keypad (28% Height, PWA Optimized) --- */
         .keypad-container {
+            /* 使用 dvh 配合 fixed body 效果較好，或使用 % */
             height: 28dvh; 
             background: var(--bg-base); 
+            /* 底部避開 safe area，確保不會被 Home Bar 擋住 */
             padding-bottom: max(16px, env(safe-area-inset-bottom));
             display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
             border-top: 1px solid var(--line-color); z-index: 20;
@@ -300,7 +315,7 @@
             width: calc(100% - 32px); 
             max-width: 600px;
             height: 80vh; 
-            margin-bottom: max(16px, env(safe-area-inset-bottom)); 
+            margin-bottom: max(16px, env(safe-area-inset-bottom)); /* Modal 也要避開底部 */
             background: var(--bg-base); 
             padding: 24px; 
             display: flex; flex-direction: column;
@@ -312,25 +327,12 @@
         }
         .modal-overlay.open .modal-content { transform: translateY(0); }
         
-        .modal-header { margin-bottom: 30px; display:flex; justify-content:space-between; align-items:center; }
-        
+        .modal-header { margin-bottom: 20px; display:flex; justify-content:space-between; align-items:center; }
         .search-input {
-            width: 100%; 
-            padding: 12px 0; 
-            background: transparent; 
-            border: none;
-            border-bottom: 2px solid var(--line-color);
-            border-radius: 0; 
-            font-family: 'Space Mono', monospace; 
-            font-size: 24px; 
-            font-weight: 700;
-            color: var(--text-primary); 
-            outline: none;
-            transition: border-color 0.3s;
+            width: 100%; padding: 16px; background: transparent; border: 1px solid var(--line-color);
+            border-radius: 0; font-family: 'Space Mono', monospace; font-size: 16px; color: var(--text-primary); outline: none;
         }
-        .search-input:focus { border-bottom-color: var(--accent); }
-        .search-input::placeholder { color: var(--text-dim); opacity: 0.5; }
-
+        .search-input:focus { border-color: var(--text-primary); }
         .modal-item {
             display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--line-color); cursor: pointer;
         }
@@ -379,10 +381,10 @@
     <div class="modal-overlay" id="modal" onclick="closeModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
-                <div style="font-size:20px; font-weight:700;">SELECT</div>
+                <div style="font-size:20px; font-weight:700;">選擇貨幣</div>
                 <span onclick="closeModal()" style="font-size:32px; cursor:pointer;">&times;</span>
             </div>
-            <input type="text" class="search-input" id="searchInput" placeholder="USD, BTC..." onkeyup="filterCurrencies()">
+            <input type="text" class="search-input" id="searchInput" placeholder="搜尋..." onkeyup="filterCurrencies()">
             <div style="margin-top:20px; flex:1; overflow-y:auto;" id="modalList"></div>
         </div>
     </div>
@@ -444,26 +446,14 @@
         "SOL": "Solana", "XRP": "XRP", "ADA": "Cardano", "DOGE": "Dogecoin"
     };
     
-    // 1. Crypto Config: IDs for CoinGecko
-    const CRYPTO_MAP = {
-        "BTC": "bitcoin",
-        "ETH": "ethereum",
-        "USDT": "tether",
-        "BNB": "binancecoin",
-        "SOL": "solana",
-        "XRP": "ripple",
-        "ADA": "cardano",
-        "DOGE": "dogecoin"
-    };
-    const CRYPTO_LIST = Object.keys(CRYPTO_MAP);
-    
+    const CRYPTO_LIST = ["BTC", "ETH", "USDT", "BNB", "SOL", "XRP", "ADA", "DOGE"];
     let userCurrencies = ["TWD", "JPY", "USD", "EUR", "KRW", "BTC"]; 
 
     let state = {
         base: localStorage.getItem('base') || 'TWD',
         inputString: "0", 
         displayValue: 100, 
-        rates: {}, 
+        rates: {},
         isDark: localStorage.getItem('theme') === 'dark',
         editingIndex: -1,
         touchStartX: 0,
@@ -481,33 +471,17 @@
 
     async function init() {
         applyTheme();
-        render(); // Early render
-        
+        render();
         try {
             const res = await fetch('https://open.er-api.com/v6/latest/USD');
             const data = await res.json();
             state.rates = data.rates;
-        } catch(e) { console.error("Fiat API Error", e); }
-
-        try {
-            const ids = Object.values(CRYPTO_MAP).join(',');
-            const cgRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
-            const cgData = await cgRes.json();
-            
-            Object.keys(CRYPTO_MAP).forEach(symbol => {
-                const id = CRYPTO_MAP[symbol];
-                if (cgData[id] && cgData[id].usd) {
-                    const priceInUsd = cgData[id].usd;
-                    state.rates[symbol] = 1 / priceInUsd;
-                }
-            });
-        } catch(e) { console.error("Crypto API Error", e); }
-
-        if (state.inputString === "0") {
-            state.displayValue = 100;
-            document.body.classList.remove('has-input');
-        }
-        recalculate();
+            if (state.inputString === "0") {
+                state.displayValue = 100;
+                document.body.classList.remove('has-input');
+            }
+            recalculate();
+        } catch(e) {}
         
         document.getElementById('detailView').addEventListener('touchstart', handleDetailTouchStart, {passive: true});
         document.getElementById('detailView').addEventListener('touchmove', handleDetailTouchMove, {passive: false});
@@ -583,31 +557,18 @@
             const isBase = code === state.base;
             let val = isBase ? state.displayValue : 0;
             
-            if(!isBase) {
-                const baseRate = state.rates[state.base] || 0;
-                const targetRate = state.rates[code] || 0;
-                if (baseRate > 0) {
-                    val = (state.displayValue / baseRate) * targetRate;
-                }
+            if(!isBase && state.rates[state.base] && state.rates[code]) {
+                val = (state.displayValue / state.rates[state.base]) * state.rates[code];
             }
             
             let showVal;
-            // Updated Decimal Logic: Maximize decimals without noise
-            if (val === 0) {
-                showVal = "0";
-            } else if (val > 100000000) {
-                 showVal = (val/1000000).toFixed(2) + 'M';
+            if (CRYPTO_LIST.includes(code) && val < 1 && val > 0) {
+                 showVal = parseFloat(val.toFixed(6)).toString(); 
             } else {
-                 let maxDecimals = val < 1 ? 8 : 6;
-                 if (val > 10000) maxDecimals = 2;
-                 else if (val > 1000) maxDecimals = 4;
-                 
-                 showVal = val.toLocaleString('en-US', {
-                     maximumFractionDigits: maxDecimals,
-                     minimumFractionDigits: 0
-                 });
+                 showVal = val > 10000000 ? (val/1000000).toFixed(1)+'M' : parseFloat(val.toFixed(2)).toLocaleString();
             }
 
+            // Calculation process display logic
             let calcText = "";
             let isCalculating = false;
             
@@ -618,6 +579,7 @@
                 }
             }
             
+            // Cursor Logic
             let amountCursor = "";
             let processCursor = "";
             const cursorHtml = '<div class="cursor"></div>';
@@ -667,6 +629,7 @@
                 </div>
                 
                 <div class="row-right">
+                    <!-- Calc process text with cursor -->
                     <div class="calc-process">
                         <span>${calcText}</span>
                         ${processCursor}
@@ -741,9 +704,6 @@
         if (state.rates[state.detailBase] && state.rates[state.detailTarget]) {
             rate = state.rates[state.detailTarget] / state.rates[state.detailBase];
         }
-        
-        let decimals = (CRYPTO_LIST.includes(state.detailTarget) || rate < 0.1) ? 6 : 4;
-        document.getElementById('detailRate').innerText = rate.toFixed(decimals);
         
         updateStatsAndChart(rate, state.detailRange);
     }
