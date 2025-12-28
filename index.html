@@ -51,24 +51,24 @@
         /* 1. 優化：鎖定 HTML 層級，防止 iOS 彈性滾動 */
         html {
             height: 100%;
-            height: 100dvh;
             width: 100%;
             overflow: hidden;
             overscroll-behavior: none; /* 禁止橡皮筋效果 */
             -webkit-text-size-adjust: 100%;
         }
 
-        /* 1. 優化：body 設定為 fixed，徹底解決底部浮動問題 */
+        /* 1. 優化：body 改用 inset: 0 強制貼合四邊，解決 PWA 底部浮動問題 */
         body {
             font-family: 'Space Mono', monospace;
             background-color: var(--bg-base);
             color: var(--text-primary);
             margin: 0;
-            height: 100%;
-            width: 100%;
             position: fixed; /* 關鍵：固定定位 */
             top: 0;
             left: 0;
+            right: 0;
+            bottom: 0; /* 強制拉伸到底部 */
+            height: auto; /* 由 top/bottom 決定高度 */
             display: flex;
             flex-direction: column;
             overflow: hidden;
