@@ -40,14 +40,23 @@
             --cursor-color: #ff6b00;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        /* 1. 優化：全域禁止縮放與選擇，解決連點放大問題 */
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            user-select: none; 
+            -webkit-user-select: none; /* iOS Safari 強制禁止選取文字 */
+            touch-action: manipulation; /* 關鍵：允許滑動但禁止雙擊縮放 */
+        }
 
         body {
             font-family: 'Space Mono', monospace;
             background-color: var(--bg-base);
             color: var(--text-primary);
             margin: 0;
+            /* 2. 優化：使用 dvh 適應瀏覽器工具列伸縮 */
             height: 100vh;
+            height: 100dvh; 
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -57,13 +66,18 @@
 
         /* --- Header --- */
         .header {
-            padding: calc(env(safe-area-inset-top) + 24px) 24px 20px 24px;
+            /* 2. 優化：使用 max() 確保即使在非劉海屏也有基礎 padding，在劉海屏則避開劉海 */
+            padding-top: max(24px, env(safe-area-inset-top)); 
+            padding-bottom: 16px;
+            padding-left: 24px;
+            padding-right: 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: var(--bg-base);
             border-bottom: 2px solid var(--text-primary);
             z-index: 10;
+            flex-shrink: 0; /* 防止 header 被壓縮 */
         }
 
         .app-title { font-size: 24px; font-weight: 700; letter-spacing: -1px; text-transform: uppercase; }
@@ -90,6 +104,8 @@
             scrollbar-width: none;
             position: relative;
             overflow-x: hidden;
+            /* 讓列表在滑動時有彈性效果 (iOS) */
+            -webkit-overflow-scrolling: touch; 
         }
         .currency-list::-webkit-scrollbar { display: none; }
 
@@ -133,37 +149,22 @@
             box-shadow: 0 0 8px var(--accent);
         }
 
-        .row-left { display: flex; align-items: center; pointer-events: none; min-width: 90px; }
+        .row-left { display: flex; align-items: center; pointer-events: none; }
         .flag-btn { background: none; border: none; padding: 0; margin: 0; cursor: pointer; display: flex; align-items: center; pointer-events: auto; }
         
         .flag { width: 36px; height: 24px; border-radius: 2px; object-fit: cover; margin-right: 16px; box-shadow: none; }
         
         .code { font-size: 20px; font-weight: 700; line-height: 1; color: var(--text-primary); }
 
-        .row-right { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: flex-end; 
-            justify-content: center; 
-            pointer-events: none; 
-            position: relative; 
-            flex: 1; 
-            /* 修正處：移除 overflow: hidden 以顯示外部絕對定位元素，改用 min-width 處理 flex 壓縮 */
-            min-width: 0;
-        }
+        .row-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; pointer-events: none; position: relative; }
         
-        .amount-wrapper { 
-            display: flex; 
-            align-items: center; 
-            position: relative; 
-            max-width: 100%;
-        }
+        .amount-wrapper { display: flex; align-items: center; position: relative; }
 
         .calc-process {
             position: absolute;
-            bottom: 100%; /* 位於數字上方 */
+            bottom: 100%; 
             right: 0;
-            font-size: 10px; /* 稍微調大一點點以便閱讀 */
+            font-size: 9px;
             color: var(--text-dim);
             margin-bottom: 2px;
             white-space: nowrap;
@@ -179,12 +180,7 @@
 
         .amount {
             font-size: 24px; font-weight: 400; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: -1px;
-            line-height: 1.2; 
-            transition: color 0.2s, font-weight 0.2s; color: var(--text-secondary); 
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100%;
+            line-height: 1.1; transition: color 0.2s, font-weight 0.2s; color: var(--text-secondary); 
         }
         
         .cursor {
@@ -194,7 +190,6 @@
             background-color: var(--cursor-color);
             margin-left: 4px;
             animation: blink 1s step-end infinite;
-            flex-shrink: 0;
         }
         
         .cursor.small {
@@ -214,16 +209,7 @@
         body.has-input .currency-row.active .amount {
             color: var(--accent); font-weight: 700; text-shadow: 0 0 10px rgba(255, 94, 0, 0.2); 
         }
-        
-        .name-sub { 
-            font-size: 9px; 
-            color: var(--text-dim); 
-            margin-top: 6px; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px; 
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
-            opacity: 0.8; 
-        }
+        .name-sub { font-size: 9px; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; opacity: 0.8; }
 
         /* --- Detail View --- */
         .detail-view {
@@ -233,11 +219,14 @@
             transform: translateX(100%);
             transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
             display: flex; flex-direction: column;
+            /* Ensure detail view also respects safe area */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
         }
         .detail-view.open { transform: translateX(0); }
 
         .detail-header {
-            padding: calc(env(safe-area-inset-top) + 20px) 24px 0 24px;
+            padding: 20px 24px 0 24px; /* safe area is handled by container padding */
             display: flex; align-items: center;
         }
         .back-btn { background: none; border: none; padding: 10px 10px 10px 0; cursor: pointer; color: var(--text-primary); }
@@ -282,11 +271,16 @@
         .stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
         .stat-value { font-size: 18px; color: var(--text-primary); font-weight: 600; }
 
-        /* --- Keypad --- */
+        /* --- Keypad (優化版) --- */
         .keypad-container {
-            height: 33vh; background: var(--bg-base); padding-bottom: max(10px, env(safe-area-inset-bottom));
+            /* 2. 優化：佔比改為 28dvh (動態高度) */
+            height: 28dvh; 
+            background: var(--bg-base); 
+            /* 2. 優化：底部加上 safe-area padding，避免 Home Bar 遮擋按鈕 */
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
             display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
             border-top: 1px solid var(--line-color); z-index: 20;
+            flex-shrink: 0; /* 防止被壓縮 */
         }
         .key {
             background: transparent; border: none; font-family: 'Space Mono', monospace;
@@ -298,7 +292,7 @@
         .key:nth-child(4n) { border-left: 1px solid var(--line-color); }
         .backspace-icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
-        /* --- Modal (Floating Card + Blur) --- */
+        /* --- Modal --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.6); 
@@ -313,7 +307,8 @@
             width: calc(100% - 32px); 
             max-width: 600px;
             height: 80vh; 
-            margin-bottom: 16px; 
+            /* 2. 優化：Modal 底部也要避開 safe area */
+            margin-bottom: max(16px, env(safe-area-inset-bottom)); 
             background: var(--bg-base); 
             padding: 24px; 
             display: flex; flex-direction: column;
@@ -325,26 +320,12 @@
         }
         .modal-overlay.open .modal-content { transform: translateY(0); }
         
-        .modal-header { margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center; }
-        
+        .modal-header { margin-bottom: 20px; display:flex; justify-content:space-between; align-items:center; }
         .search-input {
-            width: 100%; 
-            padding: 12px 0; 
-            background: transparent; 
-            border: none; 
-            border-bottom: 2px solid var(--line-color); 
-            border-radius: 0; 
-            font-family: 'Space Mono', monospace; 
-            font-size: 36px; 
-            font-weight: 700;
-            color: var(--text-primary); 
-            outline: none;
-            caret-color: var(--accent); 
-            transition: border-color 0.3s;
+            width: 100%; padding: 16px; background: transparent; border: 1px solid var(--line-color);
+            border-radius: 0; font-family: 'Space Mono', monospace; font-size: 16px; color: var(--text-primary); outline: none;
         }
-        .search-input:focus { border-bottom-color: var(--accent); }
-        .search-input::placeholder { color: var(--text-dim); opacity: 0.3; font-weight: 400; font-size: 32px; }
-
+        .search-input:focus { border-color: var(--text-primary); }
         .modal-item {
             display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--line-color); cursor: pointer;
         }
@@ -483,43 +464,17 @@
 
     async function init() {
         applyTheme();
-        render(); // 先顯示介面
-        
+        render();
         try {
-            const [fiatRes, cryptoRes] = await Promise.all([
-                fetch('https://open.er-api.com/v6/latest/USD'),
-                fetch('https://api.coinbase.com/v2/exchange-rates?currency=USD')
-            ]);
-
-            const fiatData = await fiatRes.json();
-            const cryptoData = await cryptoRes.json();
-
-            if (fiatData && fiatData.rates) {
-                state.rates = { ...fiatData.rates };
-            }
-
-            if (cryptoData && cryptoData.data && cryptoData.data.rates) {
-                Object.keys(cryptoData.data.rates).forEach(key => {
-                    state.rates[key] = parseFloat(cryptoData.data.rates[key]);
-                });
-            }
-
-            const cryptoFallbacks = {
-                "BTC": 0.0000105, "ETH": 0.00037, "USDT": 1.0, "BNB": 0.0016, 
-                "SOL": 0.007, "XRP": 1.6, "ADA": 2.2, "DOGE": 7.5
-            };
-            Object.keys(cryptoFallbacks).forEach(key => {
-                if(!state.rates[key]) state.rates[key] = cryptoFallbacks[key];
-            });
-
+            const res = await fetch('https://open.er-api.com/v6/latest/USD');
+            const data = await res.json();
+            state.rates = data.rates;
             if (state.inputString === "0") {
                 state.displayValue = 100;
                 document.body.classList.remove('has-input');
             }
             recalculate();
-        } catch(e) {
-            console.error("Rate Fetch Error", e);
-        }
+        } catch(e) {}
         
         document.getElementById('detailView').addEventListener('touchstart', handleDetailTouchStart, {passive: true});
         document.getElementById('detailView').addEventListener('touchmove', handleDetailTouchMove, {passive: false});
@@ -583,28 +538,6 @@
         render();
     }
 
-    function formatNumberSmart(val) {
-        if (val === 0) return "0";
-        
-        let formatted = val.toLocaleString('en-US', { maximumFractionDigits: 8 });
-        
-        if (formatted.length > 12) {
-            if (val >= 1000000) { 
-                 formatted = val.toLocaleString('en-US', { maximumFractionDigits: 2 });
-            } else if (val >= 1000) { 
-                 formatted = val.toLocaleString('en-US', { maximumFractionDigits: 4 });
-            } else {
-                 formatted = val.toLocaleString('en-US', { maximumFractionDigits: 6 });
-            }
-            
-            if (formatted.length > 13) {
-                 if (val >= 1000000000) return (val / 1000000000).toFixed(2) + 'B';
-                 if (val >= 1000000) return (val / 1000000).toFixed(2) + 'M';
-            }
-        }
-        return formatted;
-    }
-
     function render() {
         const list = document.getElementById('list');
         list.innerHTML = '';
@@ -621,9 +554,14 @@
                 val = (state.displayValue / state.rates[state.base]) * state.rates[code];
             }
             
-            let showVal = formatNumberSmart(val);
+            let showVal;
+            if (CRYPTO_LIST.includes(code) && val < 1 && val > 0) {
+                 showVal = parseFloat(val.toFixed(6)).toString(); 
+            } else {
+                 showVal = val > 10000000 ? (val/1000000).toFixed(1)+'M' : parseFloat(val.toFixed(2)).toLocaleString();
+            }
 
-            // Calculation process logic
+            // Calculation process display logic
             let calcText = "";
             let isCalculating = false;
             
@@ -668,7 +606,8 @@
                     state.base = code;
                     localStorage.setItem('base', code);
                     if (state.inputString !== "0") {
-                        state.inputString = parseFloat(val.toFixed(8)).toString();
+                        let decimal = CRYPTO_LIST.includes(code) ? 6 : 2;
+                        state.inputString = parseFloat(val.toFixed(decimal)).toString();
                     }
                     recalculate();
                 }
@@ -683,6 +622,7 @@
                 </div>
                 
                 <div class="row-right">
+                    <!-- Calc process text with cursor -->
                     <div class="calc-process">
                         <span>${calcText}</span>
                         ${processCursor}
@@ -758,8 +698,6 @@
             rate = state.rates[state.detailTarget] / state.rates[state.detailBase];
         }
         
-        document.getElementById('detailRate').innerText = parseFloat(rate.toFixed(8)).toString();
-        
         updateStatsAndChart(rate, state.detailRange);
     }
     
@@ -806,7 +744,7 @@
             low: low,
             change: change,
             rate: currentRate,
-            decimals: 8 
+            decimals: (CRYPTO_LIST.includes(state.detailTarget) || currentRate < 0.1) ? 6 : 4
         };
         
         renderStats(high, low, currentRate);
@@ -818,9 +756,9 @@
 
     function renderStats(high, low, rate) {
         const d = state.currentStats.decimals;
-        document.getElementById('statHigh').innerText = parseFloat(high.toFixed(d)).toString();
-        document.getElementById('statLow').innerText = parseFloat(low.toFixed(d)).toString();
-        if(rate) document.getElementById('detailRate').innerText = parseFloat(rate.toFixed(d)).toString();
+        document.getElementById('statHigh').innerText = high.toFixed(d);
+        document.getElementById('statLow').innerText = low.toFixed(d);
+        if(rate) document.getElementById('detailRate').innerText = rate.toFixed(d);
     }
 
     function generateAndDrawChart(currentRate, volatility, range) {
@@ -843,6 +781,7 @@
         points.reverse();
         points[steps-1].val = currentRate;
 
+        // Assign times
         points.forEach((p, i) => {
             const t = new Date(now.getTime() - (steps - 1 - i) * interval);
             p.timeLabel = formatTimeLabel(t, range);
@@ -930,7 +869,7 @@
             ctx.fill();
             
             // Tooltip
-            const rateText = parseFloat(p.val.toFixed(8)).toString(); 
+            const rateText = p.val.toFixed(state.currentStats.decimals);
             const timeText = p.timeLabel;
             
             ctx.font = 'bold 14px "Space Mono"';
@@ -995,7 +934,7 @@
             drawChartCanvas(state.chartPoints, closestIndex);
             
             const p = state.chartPoints[closestIndex];
-            document.getElementById('detailRate').innerText = parseFloat(p.val.toFixed(state.currentStats.decimals)).toString();
+            document.getElementById('detailRate').innerText = p.val.toFixed(state.currentStats.decimals);
             
             if(navigator.vibrate && Math.random() > 0.7) navigator.vibrate(5);
         }
@@ -1007,6 +946,7 @@
         renderStats(state.currentStats.high, state.currentStats.low, state.currentStats.rate);
     }
 
+    // --- Modal Logic ---
     function openModal(e, index) { 
         e.stopPropagation(); 
         state.isTargetSelecting = false; 
