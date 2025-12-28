@@ -40,13 +40,12 @@
             --cursor-color: #ff6b00;
         }
 
-        /* 1. 優化：全域禁止縮放與選擇，解決連點放大問題 */
         * { 
             box-sizing: border-box; 
             -webkit-tap-highlight-color: transparent; 
             user-select: none; 
-            -webkit-user-select: none; /* iOS Safari 強制禁止選取文字 */
-            touch-action: manipulation; /* 關鍵：允許滑動但禁止雙擊縮放 */
+            -webkit-user-select: none; 
+            touch-action: manipulation; 
         }
 
         body {
@@ -54,7 +53,6 @@
             background-color: var(--bg-base);
             color: var(--text-primary);
             margin: 0;
-            /* 2. 優化：使用 dvh 適應瀏覽器工具列伸縮 */
             height: 100vh;
             height: 100dvh; 
             display: flex;
@@ -66,7 +64,6 @@
 
         /* --- Header --- */
         .header {
-            /* 2. 優化：使用 max() 確保即使在非劉海屏也有基礎 padding，在劉海屏則避開劉海 */
             padding-top: max(24px, env(safe-area-inset-top)); 
             padding-bottom: 16px;
             padding-left: 24px;
@@ -77,7 +74,7 @@
             background: var(--bg-base);
             border-bottom: 2px solid var(--text-primary);
             z-index: 10;
-            flex-shrink: 0; /* 防止 header 被壓縮 */
+            flex-shrink: 0; 
         }
 
         .app-title { font-size: 24px; font-weight: 700; letter-spacing: -1px; text-transform: uppercase; }
@@ -104,7 +101,6 @@
             scrollbar-width: none;
             position: relative;
             overflow-x: hidden;
-            /* 讓列表在滑動時有彈性效果 (iOS) */
             -webkit-overflow-scrolling: touch; 
         }
         .currency-list::-webkit-scrollbar { display: none; }
@@ -219,14 +215,13 @@
             transform: translateX(100%);
             transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
             display: flex; flex-direction: column;
-            /* Ensure detail view also respects safe area */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
         }
         .detail-view.open { transform: translateX(0); }
 
         .detail-header {
-            padding: 20px 24px 0 24px; /* safe area is handled by container padding */
+            padding: 20px 24px 0 24px; 
             display: flex; align-items: center;
         }
         .back-btn { background: none; border: none; padding: 10px 10px 10px 0; cursor: pointer; color: var(--text-primary); }
@@ -271,16 +266,14 @@
         .stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
         .stat-value { font-size: 18px; color: var(--text-primary); font-weight: 600; }
 
-        /* --- Keypad (優化版) --- */
+        /* --- Keypad --- */
         .keypad-container {
-            /* 2. 優化：佔比改為 28dvh (動態高度) */
             height: 28dvh; 
             background: var(--bg-base); 
-            /* 2. 優化：底部加上 safe-area padding，避免 Home Bar 遮擋按鈕 */
             padding-bottom: max(16px, env(safe-area-inset-bottom));
             display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
             border-top: 1px solid var(--line-color); z-index: 20;
-            flex-shrink: 0; /* 防止被壓縮 */
+            flex-shrink: 0; 
         }
         .key {
             background: transparent; border: none; font-family: 'Space Mono', monospace;
@@ -307,7 +300,6 @@
             width: calc(100% - 32px); 
             max-width: 600px;
             height: 80vh; 
-            /* 2. 優化：Modal 底部也要避開 safe area */
             margin-bottom: max(16px, env(safe-area-inset-bottom)); 
             background: var(--bg-base); 
             padding: 24px; 
@@ -320,12 +312,25 @@
         }
         .modal-overlay.open .modal-content { transform: translateY(0); }
         
-        .modal-header { margin-bottom: 20px; display:flex; justify-content:space-between; align-items:center; }
+        .modal-header { margin-bottom: 30px; display:flex; justify-content:space-between; align-items:center; }
+        
         .search-input {
-            width: 100%; padding: 16px; background: transparent; border: 1px solid var(--line-color);
-            border-radius: 0; font-family: 'Space Mono', monospace; font-size: 16px; color: var(--text-primary); outline: none;
+            width: 100%; 
+            padding: 12px 0; 
+            background: transparent; 
+            border: none;
+            border-bottom: 2px solid var(--line-color);
+            border-radius: 0; 
+            font-family: 'Space Mono', monospace; 
+            font-size: 24px; 
+            font-weight: 700;
+            color: var(--text-primary); 
+            outline: none;
+            transition: border-color 0.3s;
         }
-        .search-input:focus { border-color: var(--text-primary); }
+        .search-input:focus { border-bottom-color: var(--accent); }
+        .search-input::placeholder { color: var(--text-dim); opacity: 0.5; }
+
         .modal-item {
             display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--line-color); cursor: pointer;
         }
@@ -374,10 +379,10 @@
     <div class="modal-overlay" id="modal" onclick="closeModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
-                <div style="font-size:20px; font-weight:700;">選擇貨幣</div>
+                <div style="font-size:20px; font-weight:700;">SELECT</div>
                 <span onclick="closeModal()" style="font-size:32px; cursor:pointer;">&times;</span>
             </div>
-            <input type="text" class="search-input" id="searchInput" placeholder="搜尋..." onkeyup="filterCurrencies()">
+            <input type="text" class="search-input" id="searchInput" placeholder="USD, BTC..." onkeyup="filterCurrencies()">
             <div style="margin-top:20px; flex:1; overflow-y:auto;" id="modalList"></div>
         </div>
     </div>
@@ -439,14 +444,26 @@
         "SOL": "Solana", "XRP": "XRP", "ADA": "Cardano", "DOGE": "Dogecoin"
     };
     
-    const CRYPTO_LIST = ["BTC", "ETH", "USDT", "BNB", "SOL", "XRP", "ADA", "DOGE"];
+    // 1. Crypto Config: IDs for CoinGecko
+    const CRYPTO_MAP = {
+        "BTC": "bitcoin",
+        "ETH": "ethereum",
+        "USDT": "tether",
+        "BNB": "binancecoin",
+        "SOL": "solana",
+        "XRP": "ripple",
+        "ADA": "cardano",
+        "DOGE": "dogecoin"
+    };
+    const CRYPTO_LIST = Object.keys(CRYPTO_MAP);
+    
     let userCurrencies = ["TWD", "JPY", "USD", "EUR", "KRW", "BTC"]; 
 
     let state = {
         base: localStorage.getItem('base') || 'TWD',
         inputString: "0", 
         displayValue: 100, 
-        rates: {},
+        rates: {}, 
         isDark: localStorage.getItem('theme') === 'dark',
         editingIndex: -1,
         touchStartX: 0,
@@ -464,17 +481,33 @@
 
     async function init() {
         applyTheme();
-        render();
+        render(); // Early render
+        
         try {
             const res = await fetch('https://open.er-api.com/v6/latest/USD');
             const data = await res.json();
             state.rates = data.rates;
-            if (state.inputString === "0") {
-                state.displayValue = 100;
-                document.body.classList.remove('has-input');
-            }
-            recalculate();
-        } catch(e) {}
+        } catch(e) { console.error("Fiat API Error", e); }
+
+        try {
+            const ids = Object.values(CRYPTO_MAP).join(',');
+            const cgRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+            const cgData = await cgRes.json();
+            
+            Object.keys(CRYPTO_MAP).forEach(symbol => {
+                const id = CRYPTO_MAP[symbol];
+                if (cgData[id] && cgData[id].usd) {
+                    const priceInUsd = cgData[id].usd;
+                    state.rates[symbol] = 1 / priceInUsd;
+                }
+            });
+        } catch(e) { console.error("Crypto API Error", e); }
+
+        if (state.inputString === "0") {
+            state.displayValue = 100;
+            document.body.classList.remove('has-input');
+        }
+        recalculate();
         
         document.getElementById('detailView').addEventListener('touchstart', handleDetailTouchStart, {passive: true});
         document.getElementById('detailView').addEventListener('touchmove', handleDetailTouchMove, {passive: false});
@@ -550,18 +583,31 @@
             const isBase = code === state.base;
             let val = isBase ? state.displayValue : 0;
             
-            if(!isBase && state.rates[state.base] && state.rates[code]) {
-                val = (state.displayValue / state.rates[state.base]) * state.rates[code];
+            if(!isBase) {
+                const baseRate = state.rates[state.base] || 0;
+                const targetRate = state.rates[code] || 0;
+                if (baseRate > 0) {
+                    val = (state.displayValue / baseRate) * targetRate;
+                }
             }
             
             let showVal;
-            if (CRYPTO_LIST.includes(code) && val < 1 && val > 0) {
-                 showVal = parseFloat(val.toFixed(6)).toString(); 
+            // Updated Decimal Logic: Maximize decimals without noise
+            if (val === 0) {
+                showVal = "0";
+            } else if (val > 100000000) {
+                 showVal = (val/1000000).toFixed(2) + 'M';
             } else {
-                 showVal = val > 10000000 ? (val/1000000).toFixed(1)+'M' : parseFloat(val.toFixed(2)).toLocaleString();
+                 let maxDecimals = val < 1 ? 8 : 6;
+                 if (val > 10000) maxDecimals = 2;
+                 else if (val > 1000) maxDecimals = 4;
+                 
+                 showVal = val.toLocaleString('en-US', {
+                     maximumFractionDigits: maxDecimals,
+                     minimumFractionDigits: 0
+                 });
             }
 
-            // Calculation process display logic
             let calcText = "";
             let isCalculating = false;
             
@@ -572,7 +618,6 @@
                 }
             }
             
-            // Cursor Logic
             let amountCursor = "";
             let processCursor = "";
             const cursorHtml = '<div class="cursor"></div>';
@@ -622,7 +667,6 @@
                 </div>
                 
                 <div class="row-right">
-                    <!-- Calc process text with cursor -->
                     <div class="calc-process">
                         <span>${calcText}</span>
                         ${processCursor}
@@ -697,6 +741,9 @@
         if (state.rates[state.detailBase] && state.rates[state.detailTarget]) {
             rate = state.rates[state.detailTarget] / state.rates[state.detailBase];
         }
+        
+        let decimals = (CRYPTO_LIST.includes(state.detailTarget) || rate < 0.1) ? 6 : 4;
+        document.getElementById('detailRate').innerText = rate.toFixed(decimals);
         
         updateStatsAndChart(rate, state.detailRange);
     }
