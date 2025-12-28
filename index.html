@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Mono Currency</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Light Mode */
+            --bg-base: #EBEBEB;
+            --text-primary: #1A1A1A;
+            --text-secondary: #AAAAAA; 
+            --text-dim: #8C8C8C; 
+            --accent: #ff5e00; 
+            --line-color: rgba(0,0,0,0.1);
+            --key-text: #1A1A1A;
+            --toggle-bg: #D1D1D1;
+            --row-active-bg: #E0E0E0;
+            --cursor-color: #ff5e00;
+        }
+
+        [data-theme="dark"] {
+            /* Dark Mode */
+            --bg-base: #0D0D0D;
+            --text-primary: #FFFFFF;
+            --text-secondary: #444444; 
+            --text-dim: #666666;
+            --accent: #ff6b00; 
+            --line-color: rgba(255,255,255,0.15);
+            --key-text: #FFFFFF;
+            --toggle-bg: #333333;
+            --row-active-bg: #1A1A1A;
+            --cursor-color: #ff6b00;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: background 0.3s, color 0.3s;
+            position: relative; 
+        }
+
+        /* --- Header --- */
+        .header {
+            padding: calc(env(safe-area-inset-top) + 24px) 24px 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-base);
+            border-bottom: 2px solid var(--text-primary);
+            z-index: 10;
+        }
+
+        .app-title { font-size: 24px; font-weight: 700; letter-spacing: -1px; text-transform: uppercase; }
+
+        .theme-control { display: flex; align-items: center; gap: 12px; }
+        .theme-icon { width: 18px; height: 18px; fill: var(--text-dim); transition: fill 0.3s; }
+        [data-theme="light"] .icon-sun { fill: var(--text-primary); }
+        [data-theme="dark"] .icon-moon { fill: var(--text-primary); }
+
+        .switch {
+            width: 40px; height: 20px; background: var(--toggle-bg); border-radius: 10px; position: relative; cursor: pointer;
+        }
+        .switch::after {
+            content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+            background: var(--text-primary); border-radius: 50%; transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        [data-theme="dark"] .switch::after { transform: translateX(20px); background: #fff; }
+
+        /* --- List Area --- */
+        .currency-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 0; 
+            scrollbar-width: none;
+            position: relative;
+            overflow-x: hidden;
+        }
+        .currency-list::-webkit-scrollbar { display: none; }
+
+        .currency-row-wrapper {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            border-bottom: 1px solid var(--line-color);
+        }
+
+        .currency-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 24px; 
+            position: relative;
+            background: var(--bg-base); 
+            transition: background 0.2s, transform 0.1s linear; 
+            z-index: 2;
+        }
+
+        .currency-row.active {
+            background-color: var(--row-active-bg);
+        }
+
+        .row-action-bg {
+            position: absolute; top: 0; bottom: 0; right: 0; width: 100%;
+            display: flex; align-items: center; justify-content: flex-end; padding-right: 24px;
+            color: var(--text-dim); font-size: 12px; font-weight: 700; z-index: 1; letter-spacing: 1px;
+        }
+
+        .currency-row.active::before {
+            content: ''; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+            width: 6px; height: 6px; 
+            background: var(--text-secondary); 
+            border-radius: 50%;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        body.has-input .currency-row.active::before {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .row-left { display: flex; align-items: center; pointer-events: none; min-width: 90px; }
+        .flag-btn { background: none; border: none; padding: 0; margin: 0; cursor: pointer; display: flex; align-items: center; pointer-events: auto; }
+        
+        .flag { width: 36px; height: 24px; border-radius: 2px; object-fit: cover; margin-right: 16px; box-shadow: none; }
+        
+        .code { font-size: 20px; font-weight: 700; line-height: 1; color: var(--text-primary); }
+
+        .row-right { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: flex-end; 
+            justify-content: center; 
+            pointer-events: none; 
+            position: relative; 
+            flex: 1; 
+            /* 修正處：移除 overflow: hidden 以顯示外部絕對定位元素，改用 min-width 處理 flex 壓縮 */
+            min-width: 0;
+        }
+        
+        .amount-wrapper { 
+            display: flex; 
+            align-items: center; 
+            position: relative; 
+            max-width: 100%;
+        }
+
+        .calc-process {
+            position: absolute;
+            bottom: 100%; /* 位於數字上方 */
+            right: 0;
+            font-size: 10px; /* 稍微調大一點點以便閱讀 */
+            color: var(--text-dim);
+            margin-bottom: 2px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            font-family: 'Space Mono', monospace;
+            display: flex; 
+            align-items: center;
+        }
+        
+        .currency-row.active .calc-process { opacity: 1; }
+
+        .amount {
+            font-size: 24px; font-weight: 400; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: -1px;
+            line-height: 1.2; 
+            transition: color 0.2s, font-weight 0.2s; color: var(--text-secondary); 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        
+        .cursor {
+            display: none; 
+            width: 2px;
+            height: 24px;
+            background-color: var(--cursor-color);
+            margin-left: 4px;
+            animation: blink 1s step-end infinite;
+            flex-shrink: 0;
+        }
+        
+        .cursor.small {
+            height: 12px;
+            width: 2px;
+            margin-left: 2px;
+            display: inline-block;
+        }
+        
+        .currency-row.active .cursor {
+            display: block; 
+        }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        body.has-input .amount { color: var(--text-primary); }
+        body.has-input .currency-row.active .amount {
+            color: var(--accent); font-weight: 700; text-shadow: 0 0 10px rgba(255, 94, 0, 0.2); 
+        }
+        
+        .name-sub { 
+            font-size: 9px; 
+            color: var(--text-dim); 
+            margin-top: 6px; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            opacity: 0.8; 
+        }
+
+        /* --- Detail View --- */
+        .detail-view {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-base);
+            z-index: 50;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex; flex-direction: column;
+        }
+        .detail-view.open { transform: translateX(0); }
+
+        .detail-header {
+            padding: calc(env(safe-area-inset-top) + 20px) 24px 0 24px;
+            display: flex; align-items: center;
+        }
+        .back-btn { background: none; border: none; padding: 10px 10px 10px 0; cursor: pointer; color: var(--text-primary); }
+        .detail-title-group { margin-left: 10px; display: flex; flex-direction: column;}
+        
+        .detail-pair-wrapper { font-size: 14px; color: var(--text-dim); letter-spacing: 1px; display: flex; align-items: center; gap: 5px; }
+        .clickable-target { 
+            color: var(--text-primary); border-bottom: 1px dotted var(--text-dim); cursor: pointer; display: flex; align-items: center;
+        }
+        .clickable-target::after { content: '▾'; margin-left: 4px; font-size: 10px; }
+        
+        .detail-rate { font-size: 28px; font-weight: 700; color: var(--text-primary); margin-top: 4px; }
+
+        .time-selector {
+            display: flex; justify-content: space-around; padding: 20px 24px 10px 24px;
+        }
+        .time-btn {
+            background: none; border: none; font-family: 'Space Mono', monospace;
+            font-size: 12px; color: var(--text-dim); cursor: pointer; padding: 6px 10px;
+            border-radius: 12px; transition: color 0.2s, background 0.2s;
+        }
+        .time-btn.active {
+            color: var(--text-primary); background: var(--toggle-bg); font-weight: 700;
+        }
+
+        .chart-container { 
+            flex: 1; 
+            position: relative; 
+            width: 100%; 
+            padding: 0;
+            overflow: hidden;
+        }
+        #rateCanvas { width: 100%; height: 100%; touch-action: none; }
+
+        .stats-container {
+            padding: 30px 24px 40px 24px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+            border-top: 1px solid var(--line-color);
+            background: var(--bg-base); 
+        }
+        .stat-item { display: flex; flex-direction: column; }
+        .stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
+        .stat-value { font-size: 18px; color: var(--text-primary); font-weight: 600; }
+
+        /* --- Keypad --- */
+        .keypad-container {
+            height: 33vh; background: var(--bg-base); padding-bottom: max(10px, env(safe-area-inset-bottom));
+            display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
+            border-top: 1px solid var(--line-color); z-index: 20;
+        }
+        .key {
+            background: transparent; border: none; font-family: 'Space Mono', monospace;
+            font-size: 24px; color: var(--key-text); display: flex; align-items: center; justify-content: center;
+            cursor: pointer; position: relative;
+        }
+        .key:active { background: rgba(128,128,128,0.1); }
+        .key.op { font-size: 28px; }
+        .key:nth-child(4n) { border-left: 1px solid var(--line-color); }
+        .backspace-icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* --- Modal (Floating Card + Blur) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.6); 
+            z-index: 100;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s; 
+            display: flex; align-items: flex-end; justify-content: center;
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); 
+        }
+        .modal-overlay.open { opacity: 1; visibility: visible; }
+        
+        .modal-content {
+            width: calc(100% - 32px); 
+            max-width: 600px;
+            height: 80vh; 
+            margin-bottom: 16px; 
+            background: var(--bg-base); 
+            padding: 24px; 
+            display: flex; flex-direction: column;
+            transform: translateY(110%); 
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            border-radius: 24px; 
+            border: 1px solid var(--line-color);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .modal-overlay.open .modal-content { transform: translateY(0); }
+        
+        .modal-header { margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center; }
+        
+        .search-input {
+            width: 100%; 
+            padding: 12px 0; 
+            background: transparent; 
+            border: none; 
+            border-bottom: 2px solid var(--line-color); 
+            border-radius: 0; 
+            font-family: 'Space Mono', monospace; 
+            font-size: 36px; 
+            font-weight: 700;
+            color: var(--text-primary); 
+            outline: none;
+            caret-color: var(--accent); 
+            transition: border-color 0.3s;
+        }
+        .search-input:focus { border-bottom-color: var(--accent); }
+        .search-input::placeholder { color: var(--text-dim); opacity: 0.3; font-weight: 400; font-size: 32px; }
+
+        .modal-item {
+            display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--line-color); cursor: pointer;
+        }
+        .modal-item img { width: 30px; height: 20px; margin-right: 12px;}
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="app-title">Currency</div>
+        <div class="theme-control">
+            <svg class="theme-icon icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <div class="switch" onclick="toggleTheme()"></div>
+            <svg class="theme-icon icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+    </div>
+
+    <div class="currency-list" id="list"></div>
+
+    <div class="keypad-container">
+        <button class="key" onclick="handleKey('7')">7</button>
+        <button class="key" onclick="handleKey('8')">8</button>
+        <button class="key" onclick="handleKey('9')">9</button>
+        <button class="key op" onclick="handleKey('+')">+</button>
+
+        <button class="key" onclick="handleKey('4')">4</button>
+        <button class="key" onclick="handleKey('5')">5</button>
+        <button class="key" onclick="handleKey('6')">6</button>
+        <button class="key op" onclick="handleKey('-')">−</button>
+
+        <button class="key" onclick="handleKey('1')">1</button>
+        <button class="key" onclick="handleKey('2')">2</button>
+        <button class="key" onclick="handleKey('3')">3</button>
+        <button class="key op" onclick="handleKey('*')">×</button>
+
+        <button class="key" onclick="handleKey('.')">.</button>
+        <button class="key" onclick="handleKey('0')">0</button>
+        <button class="key" onclick="handleKey('back')">
+            <svg class="backspace-icon" viewBox="0 0 24 24"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+        </button>
+        <button class="key op" onclick="handleKey('/')">÷</button>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div style="font-size:20px; font-weight:700;">選擇貨幣</div>
+                <span onclick="closeModal()" style="font-size:32px; cursor:pointer;">&times;</span>
+            </div>
+            <input type="text" class="search-input" id="searchInput" placeholder="搜尋..." onkeyup="filterCurrencies()">
+            <div style="margin-top:20px; flex:1; overflow-y:auto;" id="modalList"></div>
+        </div>
+    </div>
+
+    <!-- Detail View -->
+    <div class="detail-view" id="detailView">
+        <div class="detail-header">
+            <button class="back-btn" onclick="closeDetailView()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="detail-title-group">
+                <div class="detail-pair-wrapper">
+                    <span id="detailBase">USD</span> / 
+                    <span class="clickable-target" onclick="openTargetSelector(event)" id="detailTarget">TWD</span>
+                </div>
+                <div class="detail-rate" id="detailRate">31.24</div>
+            </div>
+        </div>
+
+        <div class="time-selector">
+            <button class="time-btn active" onclick="changeTimeRange('24H')">24H</button>
+            <button class="time-btn" onclick="changeTimeRange('7D')">7D</button>
+            <button class="time-btn" onclick="changeTimeRange('1M')">1M</button>
+            <button class="time-btn" onclick="changeTimeRange('6M')">6M</button>
+            <button class="time-btn" onclick="changeTimeRange('1Y')">1Y</button>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="rateCanvas"></canvas>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-item">
+                <span class="stat-label">High</span>
+                <span class="stat-value" id="statHigh">--</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Low</span>
+                <span class="stat-value" id="statLow">--</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Change</span>
+                <span class="stat-value" id="statChange" style="color:var(--accent)">--</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Market</span>
+                <span class="stat-value">OPEN</span>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const ALL_CURRENCIES = {
+        "TWD": "新台幣", "USD": "美元", "JPY": "日圓", "EUR": "歐元", "KRW": "韓元",
+        "CNY": "人民幣", "HKD": "港幣", "AUD": "澳幣", "CAD": "加幣", "GBP": "英鎊",
+        "SGD": "新加坡幣", "CHF": "瑞士法郎", "THB": "泰銖", "NZD": "紐幣",
+        "VND": "越南盾", "MYR": "馬來西亞幣", "IDR": "印尼盾", "PHP": "菲律賓披索",
+        "BTC": "Bitcoin", "ETH": "Ethereum", "USDT": "Tether", "BNB": "Binance Coin",
+        "SOL": "Solana", "XRP": "XRP", "ADA": "Cardano", "DOGE": "Dogecoin"
+    };
+    
+    const CRYPTO_LIST = ["BTC", "ETH", "USDT", "BNB", "SOL", "XRP", "ADA", "DOGE"];
+    let userCurrencies = ["TWD", "JPY", "USD", "EUR", "KRW", "BTC"]; 
+
+    let state = {
+        base: localStorage.getItem('base') || 'TWD',
+        inputString: "0", 
+        displayValue: 100, 
+        rates: {},
+        isDark: localStorage.getItem('theme') === 'dark',
+        editingIndex: -1,
+        touchStartX: 0,
+        swipingRow: null,
+        
+        detailBase: 'USD',
+        detailTarget: 'TWD',
+        detailRange: '24H',
+        isTargetSelecting: false,
+        
+        chartPoints: [], 
+        chartInteractionActive: false,
+        currentStats: {} 
+    };
+
+    async function init() {
+        applyTheme();
+        render(); // 先顯示介面
+        
+        try {
+            const [fiatRes, cryptoRes] = await Promise.all([
+                fetch('https://open.er-api.com/v6/latest/USD'),
+                fetch('https://api.coinbase.com/v2/exchange-rates?currency=USD')
+            ]);
+
+            const fiatData = await fiatRes.json();
+            const cryptoData = await cryptoRes.json();
+
+            if (fiatData && fiatData.rates) {
+                state.rates = { ...fiatData.rates };
+            }
+
+            if (cryptoData && cryptoData.data && cryptoData.data.rates) {
+                Object.keys(cryptoData.data.rates).forEach(key => {
+                    state.rates[key] = parseFloat(cryptoData.data.rates[key]);
+                });
+            }
+
+            const cryptoFallbacks = {
+                "BTC": 0.0000105, "ETH": 0.00037, "USDT": 1.0, "BNB": 0.0016, 
+                "SOL": 0.007, "XRP": 1.6, "ADA": 2.2, "DOGE": 7.5
+            };
+            Object.keys(cryptoFallbacks).forEach(key => {
+                if(!state.rates[key]) state.rates[key] = cryptoFallbacks[key];
+            });
+
+            if (state.inputString === "0") {
+                state.displayValue = 100;
+                document.body.classList.remove('has-input');
+            }
+            recalculate();
+        } catch(e) {
+            console.error("Rate Fetch Error", e);
+        }
+        
+        document.getElementById('detailView').addEventListener('touchstart', handleDetailTouchStart, {passive: true});
+        document.getElementById('detailView').addEventListener('touchmove', handleDetailTouchMove, {passive: false});
+
+        const canvas = document.getElementById('rateCanvas');
+        canvas.addEventListener('touchstart', handleChartTouch, {passive: false});
+        canvas.addEventListener('touchmove', handleChartTouch, {passive: false});
+        canvas.addEventListener('touchend', handleChartTouchEnd, {passive: true});
+    }
+
+    function getIconConfig(code) {
+        if (CRYPTO_LIST.includes(code)) {
+            return {
+                url: `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${code.toLowerCase()}.png`,
+                fit: 'contain'
+            };
+        } else {
+            let flagCode = code.substring(0,2).toLowerCase();
+            if(code==='USD') flagCode='us'; if(code==='EUR') flagCode='eu';
+            if(code==='CNY') flagCode='cn'; if(code==='TWD') flagCode='tw';
+            return {
+                url: `https://flagcdn.com/w80/${flagCode}.png`,
+                fit: 'cover'
+            };
+        }
+    }
+
+    function handleKey(key) {
+        if(navigator.vibrate) navigator.vibrate(5);
+        if (key === 'back') {
+            state.inputString = state.inputString.length > 1 ? state.inputString.slice(0, -1) : "0";
+        } else {
+            if(state.inputString === "0" && !['+','-','*','/','.'].includes(key)) {
+                state.inputString = key;
+            } else {
+                 const last = state.inputString.slice(-1);
+                 if(['+','-','*','/'].includes(last) && ['+','-','*','/'].includes(key)) {
+                     state.inputString = state.inputString.slice(0,-1) + key;
+                 } else {
+                     state.inputString += key;
+                 }
+            }
+        }
+        recalculate();
+    }
+
+    function recalculate() {
+        try {
+            let clean = state.inputString;
+            if(['+','-','*','/'].includes(clean.slice(-1))) clean = clean.slice(0,-1);
+            let val = eval(clean);
+            
+            if (state.inputString === "0") {
+                state.displayValue = 100;
+                document.body.classList.remove('has-input');
+            } else {
+                state.displayValue = isNaN(val) ? 0 : val;
+                document.body.classList.add('has-input');
+            }
+        } catch {}
+        render();
+    }
+
+    function formatNumberSmart(val) {
+        if (val === 0) return "0";
+        
+        let formatted = val.toLocaleString('en-US', { maximumFractionDigits: 8 });
+        
+        if (formatted.length > 12) {
+            if (val >= 1000000) { 
+                 formatted = val.toLocaleString('en-US', { maximumFractionDigits: 2 });
+            } else if (val >= 1000) { 
+                 formatted = val.toLocaleString('en-US', { maximumFractionDigits: 4 });
+            } else {
+                 formatted = val.toLocaleString('en-US', { maximumFractionDigits: 6 });
+            }
+            
+            if (formatted.length > 13) {
+                 if (val >= 1000000000) return (val / 1000000000).toFixed(2) + 'B';
+                 if (val >= 1000000) return (val / 1000000).toFixed(2) + 'M';
+            }
+        }
+        return formatted;
+    }
+
+    function render() {
+        const list = document.getElementById('list');
+        list.innerHTML = '';
+        
+        if(!userCurrencies.includes(state.base)) {
+             state.base = userCurrencies[0];
+        }
+        
+        userCurrencies.forEach((code, index) => {
+            const isBase = code === state.base;
+            let val = isBase ? state.displayValue : 0;
+            
+            if(!isBase && state.rates[state.base] && state.rates[code]) {
+                val = (state.displayValue / state.rates[state.base]) * state.rates[code];
+            }
+            
+            let showVal = formatNumberSmart(val);
+
+            // Calculation process logic
+            let calcText = "";
+            let isCalculating = false;
+            
+            if (isBase && state.inputString !== "0") {
+                if (/[+\-*/]/.test(state.inputString)) {
+                    calcText = state.inputString.replace('*', '×').replace('/', '÷');
+                    isCalculating = true;
+                }
+            }
+            
+            // Cursor Logic
+            let amountCursor = "";
+            let processCursor = "";
+            const cursorHtml = '<div class="cursor"></div>';
+            const smallCursorHtml = '<div class="cursor small"></div>';
+
+            if (isBase) {
+                if (isCalculating) {
+                    processCursor = smallCursorHtml;
+                } else {
+                    amountCursor = cursorHtml;
+                }
+            }
+
+            const iconConfig = getIconConfig(code);
+            const wrapper = document.createElement('div');
+            wrapper.className = 'currency-row-wrapper';
+            const actionBg = document.createElement('div');
+            actionBg.className = 'row-action-bg';
+            actionBg.innerText = "DETAILS";
+            wrapper.appendChild(actionBg);
+
+            const row = document.createElement('div');
+            row.className = `currency-row ${isBase ? 'active' : ''}`;
+            
+            row.addEventListener('touchstart', (e) => handleRowTouchStart(e, row, code), {passive: true});
+            row.addEventListener('touchmove', (e) => handleRowTouchMove(e, row), {passive: false});
+            row.addEventListener('touchend', (e) => handleRowTouchEnd(e, row, code, isBase, val), {passive: true});
+
+            row.addEventListener('click', () => {
+                if (!isBase) {
+                    state.base = code;
+                    localStorage.setItem('base', code);
+                    if (state.inputString !== "0") {
+                        state.inputString = parseFloat(val.toFixed(8)).toString();
+                    }
+                    recalculate();
+                }
+            });
+
+            const html = `
+                <div class="row-left">
+                    <button class="flag-btn" onclick="openModal(event, ${index})">
+                        <img src="${iconConfig.url}" class="flag" style="object-fit: ${iconConfig.fit}">
+                    </button>
+                    <span class="code">${code}</span>
+                </div>
+                
+                <div class="row-right">
+                    <div class="calc-process">
+                        <span>${calcText}</span>
+                        ${processCursor}
+                    </div>
+                    
+                    <div class="amount-wrapper">
+                        <div class="amount">${showVal}</div>
+                        ${amountCursor}
+                    </div>
+                    <div class="name-sub">${ALL_CURRENCIES[code] || code}</div>
+                </div>
+            `;
+            row.innerHTML = html;
+            wrapper.appendChild(row);
+            list.appendChild(wrapper);
+        });
+    }
+
+    // --- Swipe Logic ---
+    let touchStartX = 0;
+    let touchCurrentX = 0;
+    let isSwiping = false;
+
+    function handleRowTouchStart(e, row, code) {
+        touchStartX = e.touches[0].clientX;
+        isSwiping = false;
+        row.style.transition = 'none'; 
+    }
+
+    function handleRowTouchMove(e, row) {
+        touchCurrentX = e.touches[0].clientX;
+        const diff = touchCurrentX - touchStartX;
+        
+        if (diff < 0 && Math.abs(diff) < 200) { 
+            if(Math.abs(diff) > 10) {
+                 isSwiping = true;
+                 e.preventDefault(); 
+            }
+            row.style.transform = `translateX(${diff}px)`;
+        }
+    }
+
+    function handleRowTouchEnd(e, row, code, isBase, val) {
+        row.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        const diff = touchCurrentX - touchStartX;
+        
+        if (isSwiping && diff < -80) {
+            openDetailView(code);
+            row.style.transform = 'translateX(0)'; 
+        } else {
+            row.style.transform = 'translateX(0)';
+        }
+        isSwiping = false;
+    }
+
+    // --- Detail View Logic ---
+    function openDetailView(baseCode) {
+        const view = document.getElementById('detailView');
+        state.detailBase = baseCode;
+        if (state.detailTarget === baseCode) {
+            state.detailTarget = (baseCode === 'TWD') ? 'USD' : 'TWD';
+        }
+        updateDetailContent();
+        view.classList.add('open');
+    }
+    
+    function updateDetailContent() {
+        document.getElementById('detailBase').innerText = state.detailBase;
+        document.getElementById('detailTarget').innerText = state.detailTarget;
+        
+        let rate = 0;
+        if (state.rates[state.detailBase] && state.rates[state.detailTarget]) {
+            rate = state.rates[state.detailTarget] / state.rates[state.detailBase];
+        }
+        
+        document.getElementById('detailRate').innerText = parseFloat(rate.toFixed(8)).toString();
+        
+        updateStatsAndChart(rate, state.detailRange);
+    }
+    
+    function changeTimeRange(range) {
+        state.detailRange = range;
+        document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        updateDetailContent();
+    }
+
+    function openTargetSelector(e) {
+        e.stopPropagation();
+        state.isTargetSelecting = true;
+        document.getElementById('modal').classList.add('open');
+        renderModalList('');
+    }
+
+    function closeDetailView() {
+        document.getElementById('detailView').classList.remove('open');
+    }
+
+    let detailTouchStart = 0;
+    function handleDetailTouchStart(e) { detailTouchStart = e.touches[0].clientX; }
+    function handleDetailTouchMove(e) {
+        let diff = e.touches[0].clientX - detailTouchStart;
+        if (diff > 50) e.preventDefault();
+        if (diff > 100) closeDetailView();
+    }
+
+    // --- Chart & Interaction ---
+    function updateStatsAndChart(currentRate, range) {
+        let volatility = 0.02; 
+        if (range === '7D') volatility = 0.05;
+        if (range === '1M') volatility = 0.10;
+        if (range === '6M') volatility = 0.20;
+        if (range === '1Y') volatility = 0.35;
+        
+        let high = currentRate * (1 + volatility/2);
+        let low = currentRate * (1 - volatility/2);
+        let change = (Math.random() * volatility * 2 - volatility) * 100;
+        
+        state.currentStats = {
+            high: high,
+            low: low,
+            change: change,
+            rate: currentRate,
+            decimals: 8 
+        };
+        
+        renderStats(high, low, currentRate);
+        const changeEl = document.getElementById('statChange');
+        changeEl.innerText = (change > 0 ? '+' : '') + change.toFixed(2) + '%';
+
+        generateAndDrawChart(currentRate, volatility, range);
+    }
+
+    function renderStats(high, low, rate) {
+        const d = state.currentStats.decimals;
+        document.getElementById('statHigh').innerText = parseFloat(high.toFixed(d)).toString();
+        document.getElementById('statLow').innerText = parseFloat(low.toFixed(d)).toString();
+        if(rate) document.getElementById('detailRate').innerText = parseFloat(rate.toFixed(d)).toString();
+    }
+
+    function generateAndDrawChart(currentRate, volatility, range) {
+        const points = [];
+        const steps = 60;
+        let val = currentRate;
+        const now = new Date();
+        
+        let interval = 0; 
+        if (range === '24H') interval = (24 * 60 * 60 * 1000) / steps;
+        else if (range === '7D') interval = (7 * 24 * 60 * 60 * 1000) / steps;
+        else if (range === '1M') interval = (30 * 24 * 60 * 60 * 1000) / steps;
+        else if (range === '6M') interval = (180 * 24 * 60 * 60 * 1000) / steps;
+        else if (range === '1Y') interval = (365 * 24 * 60 * 60 * 1000) / steps;
+
+        for(let i=0; i<steps; i++) {
+            points.push({ val: val });
+            val = val * (1 + (Math.random() * volatility/5 - volatility/10)); 
+        }
+        points.reverse();
+        points[steps-1].val = currentRate;
+
+        points.forEach((p, i) => {
+            const t = new Date(now.getTime() - (steps - 1 - i) * interval);
+            p.timeLabel = formatTimeLabel(t, range);
+        });
+        
+        state.chartPoints = points;
+        drawChartCanvas(points);
+    }
+
+    function formatTimeLabel(date, range) {
+        const pad = (n) => n.toString().padStart(2, '0');
+        if (range === '24H') {
+            return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        } else if (range === '7D' || range === '1M') {
+            return `${pad(date.getMonth()+1)}/${pad(date.getDate())} ${pad(date.getHours())}:00`;
+        } else {
+            return `${date.getFullYear()}/${pad(date.getMonth()+1)}/${pad(date.getDate())}`;
+        }
+    }
+
+    function drawChartCanvas(points, activeIndex = -1) {
+        const canvas = document.getElementById('rateCanvas');
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        
+        if(canvas.width !== rect.width * dpr) {
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+        }
+        
+        const w = rect.width;
+        const h = rect.height;
+        
+        const vals = points.map(p => p.val);
+        const min = Math.min(...vals);
+        const max = Math.max(...vals);
+        const rangeVal = max - min;
+        
+        ctx.clearRect(0,0,w,h);
+        
+        ctx.beginPath();
+        const accentColor = state.isDark ? '#ff6b00' : '#ff5e00';
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        const padding = 20;
+        const availH = h - padding * 2;
+        
+        points.forEach((p, i) => {
+            p.x = (i / (points.length-1)) * w;
+            p.y = h - padding - ((p.val - min) / rangeVal) * availH;
+            
+            if(i===0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
+
+        ctx.lineTo(w, h);
+        ctx.lineTo(0, h);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, state.isDark ? 'rgba(255, 107, 0, 0.2)' : 'rgba(255, 94, 0, 0.2)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        if (activeIndex !== -1) {
+            const p = points[activeIndex];
+            
+            ctx.beginPath();
+            ctx.strokeStyle = state.isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(p.x, 0);
+            ctx.lineTo(p.x, h);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.beginPath();
+            ctx.fillStyle = state.isDark ? '#fff' : '#000';
+            ctx.arc(p.x, p.y, 6, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Tooltip
+            const rateText = parseFloat(p.val.toFixed(8)).toString(); 
+            const timeText = p.timeLabel;
+            
+            ctx.font = 'bold 14px "Space Mono"';
+            const rateWidth = ctx.measureText(rateText).width;
+            
+            ctx.font = '10px "Space Mono"';
+            const timeWidth = ctx.measureText(timeText).width;
+            
+            const boxWidth = Math.max(rateWidth, timeWidth) + 20;
+            const boxHeight = 44; 
+            
+            let tx = p.x - boxWidth/2;
+            let ty = p.y - 50;
+            
+            if (tx < 0) tx = 0;
+            if (tx + boxWidth > w) tx = w - boxWidth;
+            if (ty < 0) ty = p.y + 20; 
+            
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 4;
+
+            ctx.fillStyle = state.isDark ? '#333' : '#fff';
+            ctx.beginPath();
+            ctx.roundRect(tx, ty, boxWidth, boxHeight, 8);
+            ctx.fill();
+            
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = state.isDark ? '#fff' : '#000';
+            ctx.font = 'bold 14px "Space Mono"';
+            ctx.fillText(rateText, tx + 10, ty + 20);
+            
+            ctx.fillStyle = state.isDark ? '#ccc' : '#666';
+            ctx.font = '10px "Space Mono"';
+            ctx.fillText(timeText, tx + 10, ty + 36);
+        }
+    }
+
+    function handleChartTouch(e) {
+        e.preventDefault(); 
+        state.chartInteractionActive = true;
+        
+        const canvas = document.getElementById('rateCanvas');
+        const rect = canvas.getBoundingClientRect();
+        const touchX = e.touches[0].clientX - rect.left;
+        
+        let closestIndex = -1;
+        let minDiff = Infinity;
+        
+        state.chartPoints.forEach((p, i) => {
+            const diff = Math.abs(p.x - touchX);
+            if(diff < minDiff) {
+                minDiff = diff;
+                closestIndex = i;
+            }
+        });
+        
+        if(closestIndex !== -1) {
+            drawChartCanvas(state.chartPoints, closestIndex);
+            
+            const p = state.chartPoints[closestIndex];
+            document.getElementById('detailRate').innerText = parseFloat(p.val.toFixed(state.currentStats.decimals)).toString();
+            
+            if(navigator.vibrate && Math.random() > 0.7) navigator.vibrate(5);
+        }
+    }
+
+    function handleChartTouchEnd(e) {
+        state.chartInteractionActive = false;
+        drawChartCanvas(state.chartPoints, -1);
+        renderStats(state.currentStats.high, state.currentStats.low, state.currentStats.rate);
+    }
+
+    function openModal(e, index) { 
+        e.stopPropagation(); 
+        state.isTargetSelecting = false; 
+        state.editingIndex = index; 
+        document.getElementById('modal').classList.add('open'); 
+        renderModalList(''); 
+    }
+    
+    function renderModalList(filter) {
+        const listDiv = document.getElementById('modalList'); listDiv.innerHTML = '';
+        Object.keys(ALL_CURRENCIES).forEach(code => {
+            const name = ALL_CURRENCIES[code];
+            if(filter && !code.includes(filter.toUpperCase()) && !name.includes(filter)) return;
+            const iconConfig = getIconConfig(code);
+            const item = document.createElement('div');
+            item.className = 'modal-item';
+            item.onclick = () => selectCurrency(code);
+            item.innerHTML = `<div style="display:flex; align-items:center;"><img src="${iconConfig.url}" style="object-fit: ${iconConfig.fit}"><span style="font-weight:700;">${code}</span></div><span style="font-size:12px; color:var(--text-secondary);">${name}</span>`;
+            listDiv.appendChild(item);
+        });
+    }
+    
+    function selectCurrency(newCode) {
+        if (state.isTargetSelecting) {
+            state.detailTarget = newCode;
+            updateDetailContent();
+        } else {
+            userCurrencies[state.editingIndex] = newCode;
+            if (!userCurrencies.includes(state.base)) { state.base = newCode; localStorage.setItem('base', newCode); }
+            recalculate(); 
+        }
+        closeModal(); 
+    }
+    
+    function closeModal(e) { if(!e || e.target === document.getElementById('modal') || e.target.tagName === 'SPAN') document.getElementById('modal').classList.remove('open'); }
+    function filterCurrencies() { renderModalList(document.getElementById('searchInput').value); }
+    function toggleTheme() { state.isDark = !state.isDark; localStorage.setItem('theme', state.isDark ? 'dark' : 'light'); applyTheme(); }
+    function applyTheme() { document.documentElement.setAttribute('data-theme', state.isDark ? 'dark' : 'light'); }
+
+    init();
+</script>
+</body>
+</html>
