@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Mono Currency</title>
@@ -80,7 +79,7 @@
         /* --- Header --- */
         .header {
             padding-top: max(20px, env(safe-area-inset-top)); 
-            padding-bottom: 16px;
+            padding-bottom: 12px; /* 稍微減少 */
             padding-left: 24px;
             padding-right: 24px;
             display: flex;
@@ -113,9 +112,7 @@
             flex: 1; 
             height: 100%; 
             overflow-y: auto;
-            /* 關鍵修改 2: 這裡的 padding-bottom 必須大於鍵盤高度 + 安全區 */
-            /* 34vh 是按鈕區，env(safe-area) 是底部橫條，再加 20px 緩衝 */
-            padding: 0 0 calc(34vh + env(safe-area-inset-bottom) + 20px) 0; 
+            padding: 0 0; 
             scrollbar-width: none;
             position: relative;
             -webkit-overflow-scrolling: touch; 
@@ -134,7 +131,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 18px 24px; 
+            /* 1. 優化：減少 padding 高度，讓更多行能顯示 */
+            padding: 12px 24px; 
             position: relative;
             background: var(--bg-base); 
             transition: background 0.2s, transform 0.1s linear; 
@@ -152,7 +150,7 @@
         }
 
         .currency-row.active::before {
-            content: ''; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+            content: ''; position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
             width: 6px; height: 6px; 
             background: var(--text-secondary); 
             border-radius: 50%;
@@ -166,9 +164,11 @@
         .row-left { display: flex; align-items: center; pointer-events: none; }
         .flag-btn { background: none; border: none; padding: 0; margin: 0; cursor: pointer; display: flex; align-items: center; pointer-events: auto; }
         
-        .flag { width: 36px; height: 24px; border-radius: 2px; object-fit: cover; margin-right: 16px; box-shadow: none; }
+        /* 稍微縮小國旗 */
+        .flag { width: 32px; height: 21px; border-radius: 2px; object-fit: cover; margin-right: 14px; box-shadow: none; }
         
-        .code { font-size: 20px; font-weight: 700; line-height: 1; color: var(--text-primary); }
+        /* 稍微縮小代碼字體 */
+        .code { font-size: 18px; font-weight: 700; line-height: 1; color: var(--text-primary); }
 
         .row-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; pointer-events: none; position: relative; }
         
@@ -192,15 +192,16 @@
         
         .currency-row.active .calc-process { opacity: 1; }
 
+        /* 稍微縮小金額字體 */
         .amount {
-            font-size: 24px; font-weight: 400; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: -1px;
+            font-size: 22px; font-weight: 400; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: -1px;
             line-height: 1.1; transition: color 0.2s, font-weight 0.2s; color: var(--text-secondary); 
         }
         
         .cursor {
             display: none; 
             width: 2px;
-            height: 24px;
+            height: 22px;
             background-color: var(--cursor-color);
             margin-left: 4px;
             animation: blink 1s step-end infinite;
@@ -284,32 +285,23 @@
         .stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
         .stat-value { font-size: 18px; color: var(--text-primary); font-weight: 600; }
 
-        /* --- Keypad (關鍵修正部分) --- */
+        /* --- Keypad (暴力貼底) --- */
         .keypad-container {
-            /* 1. 回歸 Fixed 定位，這是你提供的 AI 解決方案的要求 */
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            z-index: 100; /* 確保在最上層 */
-            
-            /* 2. 背景色必須設定，因為 padding 延伸到了安全區 */
+            /* 1. 高度固定為 30vh，給列表留出更多空間 (70vh) */
+            height: 30vh; 
             background: var(--bg-base); 
             
-            /* 3. 使用 env(safe-area-inset-bottom) 增加內距 */
-            padding-bottom: env(safe-area-inset-bottom);
-            
-            /* 4. 關鍵：高度計算 */
-            /* 這裡不能只寫 34vh，否則內距會擠壓按鈕空間 */
-            /* 我們使用 calc(34vh + 安全區高度) 讓按鈕保持 34vh，安全區則是額外加上的 */
-            height: calc(34vh + env(safe-area-inset-bottom));
+            /* 2. 暴力貼底：Padding Bottom 設為 0 */
+            padding-bottom: 0;
             
             display: grid; 
             grid-template-columns: repeat(4, 1fr); 
             grid-template-rows: repeat(4, 1fr);
             border-top: 1px solid var(--line-color); 
+            z-index: 20;
+            flex-shrink: 0; 
+            width: 100%;
         }
-        
         .key {
             background: transparent; border: none; font-family: 'Space Mono', monospace;
             font-size: 24px; color: var(--key-text); display: flex; align-items: center; justify-content: center;
@@ -335,7 +327,6 @@
             width: calc(100% - 32px); 
             max-width: 600px;
             height: 80vh; 
-            /* Modal 也要注意安全區 */
             margin-bottom: max(16px, env(safe-area-inset-bottom)); 
             background: var(--bg-base); 
             padding: 24px; 
@@ -411,6 +402,7 @@
         <button class="key op" onclick="handleKey('/')">÷</button>
     </div>
 
+    <!-- Modal -->
     <div class="modal-overlay" id="modal" onclick="closeModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -422,6 +414,7 @@
         </div>
     </div>
 
+    <!-- Detail View -->
     <div class="detail-view" id="detailView">
         <div class="detail-header">
             <button class="back-btn" onclick="closeDetailView()">
